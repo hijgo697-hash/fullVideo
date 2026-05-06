@@ -95,17 +95,18 @@ body {
 }
 
 .locker-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
 }
 
 .lock-icon {
@@ -325,15 +326,6 @@ body {
     .sticky-mobile-unlock { display: flex; justify-content: center; }
     /* Add some padding to body to prevent footer content hiding */
     body { padding-bottom: 80px; }
-    
-    .locker-overlay {
-        position: fixed !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        top: 0;
-        left: 0;
-        z-index: 9999 !important;
-    }
 }
 
 /* Premium Video Verification Locker UI */
