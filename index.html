@@ -364,24 +364,48 @@
         }
 
         function fetchAndFilterOffers() {
-            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=100&s1=&s2=&callback=?`;
 
-            function handleOffersResponse(networkOffers, targetIds) {
-                if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
-                    $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
-                    return;
-                }
-                
-                let finalOffers = [];
-                if (targetIds && targetIds.length > 0) {
-                    networkOffers.forEach(offer => {
-                        if (targetIds.includes(String(offer.offer_id)) || targetIds.includes(String(offer.id))) {
-                            finalOffers.push(offer);
+            function startPollingOffers(targetIds) {
+                function poll() {
+                    $.getJSON(feedUrl, function(networkOffers) {
+                        if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
+                            if (targetIds.length > 0) {
+                                setTimeout(poll, 3000); // Loop until valid response
+                                return;
+                            }
+                            $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
+                            return;
+                        }
+                        
+                        let finalOffers = [];
+                        if (targetIds && targetIds.length > 0) {
+                            networkOffers.forEach(offer => {
+                                const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
+                                if (targetIds.includes(currentId)) {
+                                    finalOffers.push(offer);
+                                }
+                            });
+                            
+                            if (finalOffers.length === 0) {
+                                // Specific IDs not found yet, keep looping!
+                                setTimeout(poll, 3000);
+                                return;
+                            }
+                        }
+                        
+                        if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
+                        renderOffers(finalOffers);
+                        
+                    }).fail(function() {
+                        if (targetIds.length > 0) {
+                            setTimeout(poll, 5000); // Keep looping on network failure
+                        } else {
+                            $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
                         }
                     });
                 }
-                if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
-                renderOffers(finalOffers);
+                poll(); // Initiate the first request
             }
 
             $.getJSON('https://ipapi.co/json/', function(geoData) {
@@ -397,18 +421,15 @@
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 }
 
-                $.getJSON(feedUrl, function(networkOffers) {
-                    handleOffersResponse(networkOffers, targetIds);
-                }).fail(function() {
-                    $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
-                });
+                startPollingOffers(targetIds);
+
             }).fail(function() {
-                // If ipapi fails (e.g. adblock), still try to load generic offers
-                $.getJSON(feedUrl, function(networkOffers) {
-                    handleOffersResponse(networkOffers, []);
-                }).fail(function() {
-                    $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
-                });
+                // If ipapi fails, fallback to 'ALL' config
+                const countryConfig = boostedOffers['ALL'] || {};
+                let rawTargetIds = countryConfig['all'] || [];
+                let targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                
+                startPollingOffers(targetIds);
             });
         }
 
