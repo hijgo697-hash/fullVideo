@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Premium Video</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Content Locker Scripts -->
+    <!-- jQuery for JSONP API requests -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    
+    <!-- Disable Right Click and Inspect Element -->
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) { return false; } // Prevent F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Prevent Ctrl+U
+        }
+    </script>
+</head>
+<body oncontextmenu="return false;" style="-webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+    <nav class="navbar">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="var(--primary)" width="28" height="28">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+            <span>StreamHub</span>
+        </div>
+
+        <div class="nav-right">
+            <div class="avatar"></div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <div class="player-section">
+            <!-- Scarcity Banner -->
+            <div class="scarcity-banner">
+                ⚠️ Warning: Private access link expires in <span id="countdown-timer">04:59</span>
+            </div>
+            <div class="video-wrapper">
+                <img src="assets/media_thumbnail.png" alt="Blurred Video" class="blurred-video">
+                <div class="fake-controls">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-filled" style="width: 3%;"></div>
+                        </div>
+                    </div>
+                    <div class="controls-bottom">
+                        <div class="controls-left">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                            <span class="time-display">0:00 / 24:15</span>
+                        </div>
+                        <div class="controls-right">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="locker-overlay" id="locker-overlay" style="display: none; backdrop-filter: blur(8px); background: rgba(0,0,0,0.8);">
+                    <div class="verification-box">
+                        <div class="verif-header">
+                            <div class="pulsing-red-dot"></div>
+                            <span>HUMAN VERIFICATION REQUIRED</span>
+                        </div>
+                        
+                        <div class="verif-steps">
+                            <div class="verif-step completed">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span>Video stream located (1080p HD)</span>
+                            </div>
+                            <div class="verif-step pending">
+                                <div class="mini-spinner"></div>
+                                <span>Awaiting human verification...</span>
+                            </div>
+                        </div>
+
+                        <p class="verif-instructions">We have detected unusual traffic from your network. To verify you are a real person and <b>unlock the video player</b>, please complete one free verification task below.</p>
+                        
+                        <div id="offerContainer" class="offer-container">
+                            <div class="spinner" style="margin: 0 auto; border-top-color: #ff3333;"></div>
+                        </div>
+                        
+                        <div class="verif-footer">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
+                            Video unlocks instantly upon completion
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Initial Play Button overlay before buffering -->
+                <div class="initial-play-overlay" id="initial-play-overlay" onclick="startFakeBuffering(event)">
+                    <div class="play-button-large">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Fake Buffering Spinner -->
+                <div class="buffering-spinner" id="buffering-spinner" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="video-info">
+                <h1 class="video-title">Exclusive Interview & Behind The Scenes</h1>
+                <div class="video-meta">
+                    <span class="views">1.2M views • <span id="upload-date">2 hours ago</span> • <span class="live-pulse"></span><span id="live-watching" style="color: #4caf50; font-weight: bold; margin-left: 5px;">Watching now: 1,432</span></span>
+                    <div class="actions">
+                        <button class="action-btn" onclick="handleLike(this, event)">👍 145K</button>
+                        <button class="action-btn">👎</button>
+                        <button class="action-btn">Share</button>
+                        <button class="action-btn">Save</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="channel-info">
+                <div class="channel-avatar"></div>
+                <div class="channel-details">
+                    <h3>StreamHub ✓</h3>
+                    <p>15.4M subscribers</p>
+                </div>
+                <button class="subscribe-btn">Subscribe</button>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="comments-section">
+                <div class="comments-header">
+                    <h3>2,481 Comments</h3>
+                    <span>Sort by: Top comments</span>
+                </div>
+                
+                <div class="comment-input-area">
+                    <div class="channel-avatar small"></div>
+                    <div class="input-wrapper">
+                        <input type="text" id="comment-input" placeholder="Add a comment...">
+                        <div class="comment-actions" id="comment-actions" style="display: none;">
+                            <button id="cancel-comment" class="action-btn">Cancel</button>
+                            <button id="submit-comment" class="subscribe-btn" style="margin-left: 10px;">Comment</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="comments-list">
+                    <!-- Static comments -->
+                    <div class="comment">
+                        <div class="channel-avatar small" style="background-color: #e91e63;"></div>
+                        <div class="comment-content">
+                            <h4>User_992 <span class="verified-badge">✓</span> <span>20 minutes ago</span></h4>
+                            <p>OMG I can't believe this actually worked! Thanks so much!!</p>
+                            <div class="comment-footer">
+                                <span>👍 412</span> <span>👎</span> <span>Reply</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comment">
+                        <div class="channel-avatar small" style="background-color: #2196f3;"></div>
+                        <div class="comment-content">
+                            <h4>GamingLegend <span class="verified-badge">✓</span> <span>1 hour ago</span></h4>
+                            <p>The part at 5:23 had me dying 😂😂😂</p>
+                            <div class="comment-footer">
+                                <span>👍 189</span> <span>👎</span> <span>Reply</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comment">
+                        <div class="channel-avatar small" style="background-color: #ff9800;"></div>
+                        <div class="comment-content">
+                            <h4>Sarah_J <span>2 hours ago</span></h4>
+                            <p>Took a minute to verify but the video is crystal clear. Appreciate it!</p>
+                            <div class="comment-footer">
+                                <span>👍 88</span> <span>👎</span> <span>Reply</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+    </main>
+
+    <script>
+        // Array of high-quality image URLs to randomize.
+        // You can replace these with your own image URLs or local paths (e.g. 'assets/my-pic1.jpg')
+        const randomImages = [
+            'assets/media_thumbnail.png',
+            'https://images.unsplash.com/photo-1536240478700-b869070f9279?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80',
+            'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80',
+            'https://images.unsplash.com/photo-1478720568477-152d9b164e26?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80',
+            'https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80',
+            'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80'
+        ];
+
+        // Pick a random image from the array
+        const selectedImage = randomImages[Math.floor(Math.random() * randomImages.length)];
+        
+        // Update the blurred background image
+        document.querySelector('.blurred-video').src = selectedImage;
+        // 1. Dynamic Upload Date & Countdown Timer
+        const dateOpts = { year: 'numeric', month: 'short', day: 'numeric' };
+        document.getElementById('upload-date').innerText = 'Premiered ' + new Date().toLocaleDateString(undefined, dateOpts);
+
+        let timeInSeconds = 299; // 4 minutes 59 seconds
+        setInterval(() => {
+            if (timeInSeconds <= 0) return; // Optional: stop at 0, or redirect/refresh
+            timeInSeconds--;
+            let minutes = Math.floor(timeInSeconds / 60);
+            let seconds = timeInSeconds % 60;
+            document.getElementById('countdown-timer').innerText = 
+                (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+                (seconds < 10 ? "0" + seconds : seconds);
+        }, 1000);
+
+        // 2. Comments Logic
+        const commentInput = document.getElementById('comment-input');
+        const commentActions = document.getElementById('comment-actions');
+        const submitBtn = document.getElementById('submit-comment');
+        const cancelBtn = document.getElementById('cancel-comment');
+        
+        commentInput.addEventListener('focus', () => {
+            commentActions.style.display = 'flex';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            commentInput.value = '';
+            commentActions.style.display = 'none';
+        });
+
+        submitBtn.addEventListener('click', () => {
+            if(commentInput.value.trim() !== '') {
+                const newComment = document.createElement('div');
+                newComment.className = 'comment';
+                newComment.innerHTML = `
+                    <div class="channel-avatar small" style="background-color: #4caf50;"></div>
+                    <div class="comment-content">
+                        <h4>You <span>Just now</span></h4>
+                        <p>${commentInput.value}</p>
+                        <div class="comment-footer">
+                            <span>👍 0</span> <span>👎</span> <span>Reply</span>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('comments-list').prepend(newComment);
+                commentInput.value = '';
+                commentActions.style.display = 'none';
+                
+                // Increase comment count
+                const countHeader = document.querySelector('.comments-header h3');
+                countHeader.innerText = '2,482 Comments';
+            }
+        });
+
+        // 7. Custom API Content Locker
+        const CPA_USER_ID = "266306";
+        cons        // CONFIG: Add up to TWO specific offer IDs for each OS and country.
+        // Leave as empty strings '' if you don't have a specific offer.
+        const boostedOffers = {
+            // ================== AMERICAS ==================
+            'US': { 'windows': ['18091', '4202'], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United States
+            'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
+            'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
+            'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
+            'AR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Argentina
+            'CO': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Colombia
+            'CL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Chile
+            'PE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Peru
+            'VE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Venezuela
+            'EC': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Ecuador
+            'GT': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Guatemala
+            'CU': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Cuba
+            'HT': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Haiti
+            'BO': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Bolivia
+            'DO': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Dominican Republic
+            'HN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Honduras
+            'PY': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Paraguay
+            'NI': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Nicaragua
+            'SV': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // El Salvador
+            'CR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Costa Rica
+            'PA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Panama
+            'UY': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Uruguay
+            'JM': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Jamaica
+            
+            // ================== EUROPE ==================
+            'GB': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United Kingdom
+            'DE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Germany
+            'FR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // France
+            'IT': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Italy
+            'ES': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Spain
+            'NL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Netherlands
+            'SE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Sweden
+            'NO': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Norway
+            'DK': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Denmark
+            'FI': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Finland
+            'CH': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Switzerland
+            'AT': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Austria
+            'BE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Belgium
+            'PT': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Portugal
+            'IE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Ireland
+            'PL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Poland
+            'CZ': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Czech Republic
+            'GR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Greece
+            'RO': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Romania
+            'HU': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Hungary
+            'UA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Ukraine
+            'RU': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Russia
+            'BG': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Bulgaria
+            'RS': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Serbia
+            'SK': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Slovakia
+            'HR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Croatia
+            
+            // ================== ASIA ==================
+            'CN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // China
+            'IN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // India
+            'JP': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Japan
+            'KR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // South Korea
+            'ID': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Indonesia
+            'PH': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Philippines
+            'VN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Vietnam
+            'TH': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Thailand
+            'MY': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Malaysia
+            'SG': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Singapore
+            'PK': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Pakistan
+            'BD': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Bangladesh
+            'TR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Turkey
+            'SA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Saudi Arabia
+            'AE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // UAE
+            'IL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Israel
+            'IR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Iran
+            'IQ': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Iraq
+            'AF': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Afghanistan
+            'YE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Yemen
+            'UZ': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Uzbekistan
+            'OM': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Oman
+            'QA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Qatar
+            'KW': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Kuwait
+            
+            // ================== GLOBAL FALLBACK ==================
+            'ALL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }
+        };
+
+        function detectOS() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) return "ios";
+            if (ua.includes("android")) return "android";
+            if (ua.includes("win")) return "windows";
+            if (ua.includes("mac")) return "mac";
+            return "all"; // default/other
+        }
+
+        let leadCheckInterval;
+
+        function renderOffers(offersList) {
+            const container = $('#offerContainer');
+            container.empty();
+
+            if (!offersList || offersList.length === 0) {
+                container.html('<p style="color: red;">No offers available for your region at this time.</p>');
+                return;
+            }
+
+            const maxOffers = Math.min(offersList.length, 2); // Hardcoded limit to EXACTLY 2 offers
+            for (let i = 0; i < maxOffers; i++) {
+                const offer = offersList[i];
+                const offerBtn = $(`
+                    <a href="${offer.url}" target="_blank" class="verif-task-btn">
+                        <div class="task-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        </div>
+                        <div class="task-details">
+                            <span class="task-title">${offer.anchor || offer.name || 'Complete Verification Task'}</span>
+                            <span class="task-subtitle">Free • Takes ~1 minute</span>
+                        </div>
+                        <div class="task-arrow">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                        </div>
+                    </a>
+                `);
+                container.append(offerBtn);
+            }
+
+            startLeadPolling();
+        }
+
+        function fetchAndFilterOffers() {
+            $.getJSON('https://ipapi.co/json/', function(geoData) {
+                const countryCode = geoData.country_code || 'ALL';
+                const userOS = detectOS();
+                
+                const countryConfig = boostedOffers[countryCode] || boostedOffers['ALL'] || {};
+                let rawTargetIds = countryConfig[userOS] || [];
+                // Filter out the empty placeholder strings
+                let targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                
+                if (targetIds.length === 0) {
+                    rawTargetIds = countryConfig['all'] || [];
+                    targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                }
+
+                const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
+                
+                $.getJSON(feedUrl, function(networkOffers) {
+                    let finalOffers = [];
+                    if (targetIds && targetIds.length > 0) {
+                        networkOffers.forEach(offer => {
+                            if (targetIds.includes(String(offer.offer_id)) || targetIds.includes(String(offer.id))) {
+                                finalOffers.push(offer);
+                            }
+                        });
+                    }
+                    if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
+                    renderOffers(finalOffers);
+                }).fail(function() {
+                    $('#offerContainer').html('<p style="color: red;">Error loading offers.</p>');
+                });
+            }).fail(function() {
+                const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
+                $.getJSON(feedUrl, function(networkOffers) {
+                    renderOffers(networkOffers.slice(0, 2));
+                });
+            });
+        }
+
+        function startLeadPolling() {
+            if (leadCheckInterval) clearInterval(leadCheckInterval);
+            leadCheckInterval = setInterval(function() {
+                const checkUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/external/check2.php?testing=0&callback=?`;
+                $.getJSON(checkUrl, function(leads) {
+                    if (leads && leads.length > 0) {
+                        clearInterval(leadCheckInterval);
+                        unlockContent();
+                    }
+                });
+            }, 15000);
+        }
+
+        function unlockContent() {
+            $('#locker-overlay').hide();
+            $('.fake-controls').hide();
+            const video = document.querySelector('.blurred-video');
+            video.style.filter = 'none';
+            video.style.transform = 'scale(1)';
+            alert("Verification Successful! Playing Video...");
+        }
+
+        function startFakeBuffering(event) {
+            if(event) event.stopPropagation();
+            document.getElementById('initial-play-overlay').style.display = 'none';
+            document.getElementById('buffering-spinner').style.display = 'flex';
+            fetchAndFilterOffers();
+            setTimeout(() => {
+                document.getElementById('buffering-spinner').style.display = 'none';
+                document.getElementById('locker-overlay').style.display = 'flex';
+            }, 2500);
+        }
+
+        // 4. Live Watching Counter Logic
+        let baseViewers = 1432;
+        setInterval(() => {
+            // Randomly add or subtract between -5 and +15 viewers
+            const change = Math.floor(Math.random() * 21) - 5;
+            baseViewers += change;
+            if (baseViewers < 1200) baseViewers = 1200; // set a minimum floor
+            
+            // Format number with commas
+            document.getElementById('live-watching').innerText = 'Watching now: ' + baseViewers.toLocaleString();
+        }, 3500); // Update every 3.5 seconds
+        // 5. Interactive Like Button
+        function handleLike(btn, event) {
+            if (!btn.classList.contains('liked')) {
+                btn.classList.add('liked');
+                btn.innerHTML = '👍 145,001';
+                btn.style.color = '#3ea6ff';
+            }
+        }
+
+        // 6. Auto-Scrolling Comments
+        const fakeComments = [
+            { name: "AlexTheGreat", text: "Yo this works instantly, thank you!", avatar: "#ff5722", time: "Just now" },
+            { name: "CryptoKing <span class='verified-badge'>✓</span>", text: "Finally a link that isn't broken.", avatar: "#9c27b0", time: "Just now" },
+            { name: "MovieFanatic99", text: "Been looking everywhere for this.", avatar: "#00bcd4", time: "Just now" },
+            { name: "John_Doe2023", text: "W locker, unlocked in like 30 secs.", avatar: "#8bc34a", time: "Just now" },
+            { name: "AnonymousUser", text: "Can confirm this is legit.", avatar: "#607d8b", time: "Just now" }
+        ];
+
+        setInterval(() => {
+            const commentData = fakeComments[Math.floor(Math.random() * fakeComments.length)];
+            const newComment = document.createElement('div');
+            newComment.className = 'comment new-comment';
+            newComment.innerHTML = `
+                <div class="channel-avatar small" style="background-color: ${commentData.avatar};"></div>
+                <div class="comment-content">
+                    <h4>${commentData.name} <span>${commentData.time}</span></h4>
+                    <p>${commentData.text}</p>
+                    <div class="comment-footer">
+                        <span>👍 ${Math.floor(Math.random() * 50) + 1}</span> <span>👎</span> <span>Reply</span>
+                    </div>
+                </div>
+            `;
+            const list = document.getElementById('comments-list');
+            list.prepend(newComment);
+            
+            // Update count
+            let currentCount = parseInt(document.querySelector('.comments-header h3').innerText.replace(/,/g, ''));
+            currentCount++;
+            document.querySelector('.comments-header h3').innerText = currentCount.toLocaleString() + ' Comments';
+        }, 12000); // Add a new comment every 12 seconds
+    </script>
+
+    <!-- Mobile Sticky Unlock Button -->
+    <div class="sticky-mobile-unlock">
+        <button class="main-play-btn" onclick="startFakeBuffering(event)" style="width: 100%; justify-content: center; font-size: 1.2rem; padding: 1rem;">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
+            </svg>
+            Unlock Video Now
+        </button>
+    </div>
+</body>
+</html>
