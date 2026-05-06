@@ -232,11 +232,13 @@
 
         // 7. Custom API Content Locker
         const CPA_USER_ID = "266306";
-        cons        // CONFIG: Add up to TWO specific offer IDs for each OS and country.
+        const CPA_API_KEY = "ebc908434780141a17043a39dfcfe7dd";
+
+        // CONFIG: Add up to TWO specific offer IDs for each OS and country.
         // Leave as empty strings '' if you don't have a specific offer.
         const boostedOffers = {
             // ================== AMERICAS ==================
-            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United States
+            'US': { 'windows': ['18091', '4202'], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United States
             'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
             'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
             'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
@@ -362,13 +364,32 @@
         }
 
         function fetchAndFilterOffers() {
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
+
+            function handleOffersResponse(networkOffers, targetIds) {
+                if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
+                    $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
+                    return;
+                }
+                
+                let finalOffers = [];
+                if (targetIds && targetIds.length > 0) {
+                    networkOffers.forEach(offer => {
+                        if (targetIds.includes(String(offer.offer_id)) || targetIds.includes(String(offer.id))) {
+                            finalOffers.push(offer);
+                        }
+                    });
+                }
+                if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
+                renderOffers(finalOffers);
+            }
+
             $.getJSON('https://ipapi.co/json/', function(geoData) {
                 const countryCode = geoData.country_code || 'ALL';
                 const userOS = detectOS();
                 
                 const countryConfig = boostedOffers[countryCode] || boostedOffers['ALL'] || {};
                 let rawTargetIds = countryConfig[userOS] || [];
-                // Filter out the empty placeholder strings
                 let targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 
                 if (targetIds.length === 0) {
@@ -376,26 +397,17 @@
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 }
 
-                const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
-                
                 $.getJSON(feedUrl, function(networkOffers) {
-                    let finalOffers = [];
-                    if (targetIds && targetIds.length > 0) {
-                        networkOffers.forEach(offer => {
-                            if (targetIds.includes(String(offer.offer_id)) || targetIds.includes(String(offer.id))) {
-                                finalOffers.push(offer);
-                            }
-                        });
-                    }
-                    if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
-                    renderOffers(finalOffers);
+                    handleOffersResponse(networkOffers, targetIds);
                 }).fail(function() {
-                    $('#offerContainer').html('<p style="color: red;">Error loading offers.</p>');
+                    $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
                 });
             }).fail(function() {
-                const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&s1=&s2=&callback=?`;
+                // If ipapi fails (e.g. adblock), still try to load generic offers
                 $.getJSON(feedUrl, function(networkOffers) {
-                    renderOffers(networkOffers.slice(0, 2));
+                    handleOffersResponse(networkOffers, []);
+                }).fail(function() {
+                    $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
                 });
             });
         }
