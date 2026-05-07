@@ -1,33 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch Premium Video</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    
+
     <!-- Content Locker Scripts -->
     <!-- jQuery for JSONP API requests -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    
+
     <!-- Disable Right Click and Inspect Element -->
     <script>
         document.addEventListener('contextmenu', event => event.preventDefault());
-        document.onkeydown = function(e) {
-            if(e.keyCode == 123) { return false; } // Prevent F12
-            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+I
-            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+C
-            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+J
-            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Prevent Ctrl+U
+        document.onkeydown = function (e) {
+            if (e.keyCode == 123) { return false; } // Prevent F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+I
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+J
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Prevent Ctrl+U
         }
     </script>
 </head>
-<body oncontextmenu="return false;" style="-webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+
+<body oncontextmenu="return false;"
+    style="-webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
     <nav class="navbar">
         <div class="logo">
             <svg viewBox="0 0 24 24" fill="var(--primary)" width="28" height="28">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
             </svg>
             <span>StreamHub</span>
         </div>
@@ -53,17 +56,25 @@
                     </div>
                     <div class="controls-bottom">
                         <div class="controls-left">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7z"/></svg>
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
+                            </svg>
                             <span class="time-display">0:00 / 24:15</span>
                         </div>
                         <div class="controls-right">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                                <path
+                                    d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                            </svg>
                         </div>
                     </div>
                 </div>
 
-                
+
                 <!-- Initial Play Button overlay before buffering -->
                 <div class="initial-play-overlay" id="initial-play-overlay" onclick="startFakeBuffering(event)">
                     <div class="play-button-large">
@@ -82,7 +93,10 @@
             <div class="video-info">
                 <h1 class="video-title">Exclusive Interview & Behind The Scenes</h1>
                 <div class="video-meta">
-                    <span class="views">1.2M views • <span id="upload-date">2 hours ago</span> • <span class="live-pulse"></span><span id="live-watching" style="color: #4caf50; font-weight: bold; margin-left: 5px;">Watching now: 1,432</span></span>
+                    <span class="views">1.2M views • <span id="upload-date">2 hours ago</span> • <span
+                            class="live-pulse"></span><span id="live-watching"
+                            style="color: #4caf50; font-weight: bold; margin-left: 5px;">Watching now:
+                            1,432</span></span>
                     <div class="actions">
                         <button class="action-btn" onclick="handleLike(this, event)">👍 145K</button>
                         <button class="action-btn">👎</button>
@@ -91,7 +105,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="channel-info">
                 <div class="channel-avatar"></div>
                 <div class="channel-details">
@@ -107,14 +121,15 @@
                     <h3>2,481 Comments</h3>
                     <span>Sort by: Top comments</span>
                 </div>
-                
+
                 <div class="comment-input-area">
                     <div class="channel-avatar small"></div>
                     <div class="input-wrapper">
                         <input type="text" id="comment-input" placeholder="Add a comment...">
                         <div class="comment-actions" id="comment-actions" style="display: none;">
                             <button id="cancel-comment" class="action-btn">Cancel</button>
-                            <button id="submit-comment" class="subscribe-btn" style="margin-left: 10px;">Comment</button>
+                            <button id="submit-comment" class="subscribe-btn"
+                                style="margin-left: 10px;">Comment</button>
                         </div>
                     </div>
                 </div>
@@ -173,7 +188,7 @@
 
         // Pick a random image from the array
         const selectedImage = randomImages[Math.floor(Math.random() * randomImages.length)];
-        
+
         // Update the blurred background image
         document.querySelector('.blurred-video').src = selectedImage;
         // 1. Dynamic Upload Date & Countdown Timer
@@ -186,8 +201,8 @@
             timeInSeconds--;
             let minutes = Math.floor(timeInSeconds / 60);
             let seconds = timeInSeconds % 60;
-            document.getElementById('countdown-timer').innerText = 
-                (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+            document.getElementById('countdown-timer').innerText =
+                (minutes < 10 ? "0" + minutes : minutes) + ":" +
                 (seconds < 10 ? "0" + seconds : seconds);
         }, 1000);
 
@@ -196,7 +211,7 @@
         const commentActions = document.getElementById('comment-actions');
         const submitBtn = document.getElementById('submit-comment');
         const cancelBtn = document.getElementById('cancel-comment');
-        
+
         commentInput.addEventListener('focus', () => {
             commentActions.style.display = 'flex';
         });
@@ -207,7 +222,7 @@
         });
 
         submitBtn.addEventListener('click', () => {
-            if(commentInput.value.trim() !== '') {
+            if (commentInput.value.trim() !== '') {
                 const newComment = document.createElement('div');
                 newComment.className = 'comment';
                 newComment.innerHTML = `
@@ -223,7 +238,7 @@
                 document.getElementById('comments-list').prepend(newComment);
                 commentInput.value = '';
                 commentActions.style.display = 'none';
-                
+
                 // Increase comment count
                 const countHeader = document.querySelector('.comments-header h3');
                 countHeader.innerText = '2,482 Comments';
@@ -238,7 +253,7 @@
         // Leave as empty strings '' if you don't have a specific offer.
         const boostedOffers = {
             // ================== AMERICAS ==================
-            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['3533', '4202'], 'all': ['', ''] }, // United States
+            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['18091', '4202'], 'all': ['', ''] }, // United States
             'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
             'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
             'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
@@ -261,7 +276,7 @@
             'PA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Panama
             'UY': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Uruguay
             'JM': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Jamaica
-            
+
             // ================== EUROPE ==================
             'GB': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United Kingdom
             'DE': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Germany
@@ -289,7 +304,7 @@
             'RS': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Serbia
             'SK': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Slovakia
             'HR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Croatia
-            
+
             // ================== ASIA ==================
             'CN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // China
             'IN': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // India
@@ -315,9 +330,9 @@
             'OM': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Oman
             'QA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Qatar
             'KW': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Kuwait
-            
+
             // ================== GLOBAL FALLBACK ==================
-            'ALL': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }
+            // 'ALL': { 'windows': ['18091', '4202'], 'ios': ['18091', '4202'], 'android': ['18091', '4202'], 'all': ['18091', '4202'] }
         };
 
         function detectOS() {
@@ -364,17 +379,17 @@
         }
 
         function fetchAndFilterOffers() {
-            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=100&s1=&s2=&callback=?`;
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=1000&s1=&s2=&callback=?`;
 
             function requestOffers(targetIds) {
                 targetIds = Array.from(new Set(targetIds));
 
-                $.getJSON(feedUrl, function(networkOffers) {
+                $.getJSON(feedUrl, function (networkOffers) {
                     if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
                         $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
                         return;
                     }
-                    
+
                     let finalOffers = [];
                     if (targetIds && targetIds.length > 0) {
                         networkOffers.forEach(offer => {
@@ -384,7 +399,7 @@
                             }
                         });
                     }
-                    
+
                     // If any specified offers were capped/stopped, or if no IDs were provided, pad with the best fallback offers
                     if (finalOffers.length < 2) {
                         function getCR(offer) {
@@ -393,36 +408,36 @@
                             if (payout === 0) return 0;
                             return epc / payout;
                         }
-                        
+
                         // Remove any offers we already successfully grabbed
                         let remainingOffers = networkOffers.filter(o => {
                             const id = String(o.offer_id || o.id || o.campaign_id || o.offerid);
                             return !targetIds.includes(id);
                         });
-                        
+
                         // Sort the remaining pool by the highest conversion rate (EPC / Payout)
                         remainingOffers.sort((a, b) => getCR(b) - getCR(a));
-                        
+
                         // Grab exactly enough offers to fill the empty slots (so we always show exactly 2)
                         const needed = 2 - finalOffers.length;
                         finalOffers = finalOffers.concat(remainingOffers.slice(0, needed));
                     }
-                    
+
                     renderOffers(finalOffers);
-                    
-                }).fail(function() {
+
+                }).fail(function () {
                     $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
                 });
             }
 
-            $.getJSON('https://ipapi.co/json/', function(geoData) {
+            $.getJSON('https://ipapi.co/json/', function (geoData) {
                 const countryCode = geoData.country_code || 'ALL';
                 const userOS = detectOS();
-                
+
                 const countryConfig = boostedOffers[countryCode] || boostedOffers['ALL'] || {};
                 let rawTargetIds = countryConfig[userOS] || [];
                 let targetIds = rawTargetIds.filter(id => id.trim() !== '');
-                
+
                 if (targetIds.length === 0) {
                     rawTargetIds = countryConfig['all'] || [];
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
@@ -430,27 +445,27 @@
 
                 requestOffers(targetIds);
 
-            }).fail(function() {
+            }).fail(function () {
                 // If ipapi fails (e.g. blocked by VPN), fallback to 'ALL' config but STILL respect their OS
                 const userOS = detectOS();
                 const countryConfig = boostedOffers['ALL'] || {};
                 let rawTargetIds = countryConfig[userOS] || [];
                 let targetIds = rawTargetIds.filter(id => id.trim() !== '');
-                
+
                 if (targetIds.length === 0) {
                     rawTargetIds = countryConfig['all'] || [];
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 }
-                
+
                 requestOffers(targetIds);
             });
         }
 
         function startLeadPolling() {
             if (leadCheckInterval) clearInterval(leadCheckInterval);
-            leadCheckInterval = setInterval(function() {
+            leadCheckInterval = setInterval(function () {
                 const checkUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/external/check2.php?testing=0&callback=?`;
-                $.getJSON(checkUrl, function(leads) {
+                $.getJSON(checkUrl, function (leads) {
                     if (leads && leads.length > 0) {
                         clearInterval(leadCheckInterval);
                         unlockContent();
@@ -469,7 +484,7 @@
         }
 
         function startFakeBuffering(event) {
-            if(event) event.stopPropagation();
+            if (event) event.stopPropagation();
             document.getElementById('initial-play-overlay').style.display = 'none';
             document.getElementById('buffering-spinner').style.display = 'flex';
             fetchAndFilterOffers();
@@ -486,7 +501,7 @@
             const change = Math.floor(Math.random() * 21) - 5;
             baseViewers += change;
             if (baseViewers < 1200) baseViewers = 1200; // set a minimum floor
-            
+
             // Format number with commas
             document.getElementById('live-watching').innerText = 'Watching now: ' + baseViewers.toLocaleString();
         }, 3500); // Update every 3.5 seconds
@@ -524,7 +539,7 @@
             `;
             const list = document.getElementById('comments-list');
             list.prepend(newComment);
-            
+
             // Update count
             let currentCount = parseInt(document.querySelector('.comments-header h3').innerText.replace(/,/g, ''));
             currentCount++;
@@ -532,16 +547,19 @@
         }, 12000); // Add a new comment every 12 seconds
     </script>
 
-    <div class="locker-overlay" id="locker-overlay" style="display: none; backdrop-filter: blur(8px); background: rgba(0,0,0,0.8);">
+    <div class="locker-overlay" id="locker-overlay"
+        style="display: none; backdrop-filter: blur(8px); background: rgba(0,0,0,0.8);">
         <div class="verification-box">
             <div class="verif-header">
                 <div class="pulsing-red-dot"></div>
                 <span>HUMAN VERIFICATION REQUIRED</span>
             </div>
-            
+
             <div class="verif-steps">
                 <div class="verif-step completed">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
                     <span>Video stream located (1080p HD)</span>
                 </div>
                 <div class="verif-step pending">
@@ -550,14 +568,18 @@
                 </div>
             </div>
 
-            <p class="verif-instructions">We have detected unusual traffic from your network. To verify you are a real person and <b>unlock the video player</b>, please complete one free verification task below.</p>
-            
+            <p class="verif-instructions">We have detected unusual traffic from your network. To verify you are a real
+                person and <b>unlock the video player</b>, please complete one free verification task below.</p>
+
             <div id="offerContainer" class="offer-container">
                 <div class="spinner" style="margin: 0 auto; border-top-color: #ff3333;"></div>
             </div>
-            
+
             <div class="verif-footer">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                    <path
+                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
+                </svg>
                 Video unlocks instantly upon completion
             </div>
         </div>
@@ -565,12 +587,15 @@
 
     <!-- Mobile Sticky Unlock Button -->
     <div class="sticky-mobile-unlock">
-        <button class="main-play-btn" onclick="startFakeBuffering(event)" style="width: 100%; justify-content: center; font-size: 1.2rem; padding: 1rem;">
+        <button class="main-play-btn" onclick="startFakeBuffering(event)"
+            style="width: 100%; justify-content: center; font-size: 1.2rem; padding: 1rem;">
             <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
+                <path
+                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
             </svg>
             Unlock Video Now
         </button>
     </div>
 </body>
+
 </html>
