@@ -12,16 +12,49 @@
     <!-- jQuery for JSONP API requests -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-    <!-- Disable Right Click and Inspect Element -->
+    <!-- Anti-Theft & Anti-Scraping Defenses -->
     <script>
+        // 1. Offline & HTTrack Defense
+        // If the protocol isn't HTTP/HTTPS (e.g., file:// for offline ripping), nuke the page
+        if (window.location.protocol.indexOf('http') !== 0) {
+            document.documentElement.innerHTML = '';
+            window.location.replace("about:blank");
+        }
+
+        // 2. Headless Browser / Scraper Detection
+        if (navigator.webdriver || window.document.documentElement.getAttribute("webdriver")) {
+            document.documentElement.innerHTML = '';
+        }
+
+        // 3. The Debugger Trap (Freezes DevTools if opened)
+        setInterval(function() {
+            const before = new Date().getTime();
+            debugger;
+            const after = new Date().getTime();
+            // If debugger pauses the thread, time delta will be large
+            if (after - before > 100) {
+                document.body.innerHTML = '';
+            }
+        }, 1000);
+
+        // 4. Expanded Keyboard Shortcut Blocks
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function (e) {
-            if (e.keyCode == 123) { return false; } // Prevent F12
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+I
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+C
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Prevent Ctrl+Shift+J
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Prevent Ctrl+U
-        }
+            // F12
+            if (e.keyCode == 123) return false;
+            // Ctrl+Shift+I (Inspect)
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+            // Ctrl+Shift+C (Inspect Element)
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
+            // Ctrl+Shift+J (Console)
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+            // Ctrl+U (View Source)
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+            // Ctrl+S (Save Page)
+            if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false;
+            // Ctrl+P (Print Page)
+            if (e.ctrlKey && e.keyCode == 'P'.charCodeAt(0)) return false;
+        };
     </script>
 </head>
 
@@ -249,8 +282,78 @@
         const CPA_USER_ID = "266306";
         const CPA_API_KEY = "ebc908434780141a17043a39dfcfe7dd";
 
+        // ================== TELEGRAM BOT TRACKING ==================
+        const TELEGRAM_BOT_TOKEN = "8613287923:AAHdEU3BR0IY8p3vrY1LQ2DF7Fbl9YYH8ns";
+        const TELEGRAM_CHAT_ID = "7095493606";
+        let tgHasClickedOffer = false;
+        let tgHasCompletedOffer = false;
+        let currentCompletedOffer = "";
+        let tgHasAbandonedGhost = false;
+        let tgHasAbandonedAfterClick = false;
+
+        function sendTelegramMessage(text, isBeacon = false) {
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=HTML`;
+            if (isBeacon && navigator.sendBeacon) {
+                navigator.sendBeacon(url);
+            } else {
+                fetch(url, { keepalive: true }).catch(err => console.error(err));
+            }
+        }
+
+        // 1. Initial Page Load Tracking
+        async function trackInitialVisit() {
+            try {
+                let country = "Unknown";
+                try {
+                    const geoResponse = await fetch('https://get.geojs.io/v1/ip/country.json');
+                    const geoData = await geoResponse.json();
+                    country = geoData.country || "Unknown";
+                } catch(e) { country = "Unknown (VPN/Adblock)"; }
+
+                const referrer = document.referrer || "Direct Traffic";
+
+                let visits = parseInt(localStorage.getItem('locker_visits') || "0");
+                let isNewVisitor = (visits === 0);
+                visits++;
+                localStorage.setItem('locker_visits', visits.toString());
+
+                let pastCompletions = localStorage.getItem('locker_completions');
+                let completionsText = pastCompletions ? `\n<b>Past Completions:</b> ${pastCompletions}` : "\n<b>Past Completions:</b> None";
+
+                let msg = `<b>🚀 NEW LANDING PAGE HIT!</b>\n\n`;
+                msg += `<b>Visitor:</b> ${isNewVisitor ? 'New Visitor 🆕' : 'Returning Visitor 🔄 (Visit #' + visits + ')'}\n`;
+                msg += `<b>Device:</b> ${detectOS()}\n`;
+                msg += `<b>Country:</b> ${country}\n`;
+                msg += `<b>Source:</b> ${referrer}${completionsText}`;
+
+                sendTelegramMessage(msg);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            trackInitialVisit();
+        });
+
+        function handleOfferClick(offerName, offerPayout, offerId) {
+            if (!tgHasClickedOffer) {
+                tgHasClickedOffer = true;
+                currentCompletedOffer = offerName;
+                let msg = `<b>🖱️ OFFER CLICKED!</b>\n\n`;
+                msg += `<b>Offer:</b> ${offerName}\n`;
+                msg += `<b>Payout:</b> ${offerPayout}\n`;
+                msg += `<b>ID:</b> ${offerId}`;
+                sendTelegramMessage(msg);
+            }
+        }
+        // ===========================================================
+
         // CONFIG: Add up to TWO specific offer IDs for each OS and country.
         // Leave as empty strings '' if you don't have a specific offer.
+        // If you want BACKUP offers for a specific country/device, simply add them as a 3rd and 4th ID in the array! (e.g. ['primary1', 'primary2', 'backup1', 'backup2'])
+        const blacklistedOffers = ['9999', '8888']; // IDs to never show, no matter what
+        
         const boostedOffers = {
             // ================== AMERICAS ==================
             'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['18091', '4202'], 'all': ['', ''] }, // United States
@@ -332,7 +435,7 @@
             'KW': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Kuwait
 
             // ================== GLOBAL FALLBACK ==================
-            // 'ALL': { 'windows': ['18091', '4202'], 'ios': ['18091', '4202'], 'android': ['18091', '4202'], 'all': ['18091', '4202'] }
+            'ALL': { 'windows': ['18091', '4202'], 'ios': ['18091', '4202'], 'android': ['18091', '4202'], 'all': ['18091', '4202'] }
         };
 
         function detectOS() {
@@ -358,8 +461,12 @@
             const maxOffers = Math.min(offersList.length, 2); // Show strictly 2 offers
             for (let i = 0; i < maxOffers; i++) {
                 const offer = offersList[i];
+                const offerNameEscaped = String(offer.anchor || offer.name || 'Task').replace(/'/g, "\\'");
+                const offerPayout = offer.payout || "Unknown";
+                const offerId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid || "Unknown");
+
                 const offerBtn = $(`
-                    <a href="${offer.url}" target="_blank" class="verif-task-btn">
+                    <a href="${offer.url}" target="_blank" class="verif-task-btn" onclick="handleOfferClick('${offerNameEscaped}', '${offerPayout}', '${offerId}')">
                         <div class="task-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         </div>
@@ -381,26 +488,44 @@
         function fetchAndFilterOffers() {
             const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=1000&s1=&s2=&callback=?`;
 
-            function requestOffers(targetIds) {
-                targetIds = Array.from(new Set(targetIds));
-
+            function requestOffers(primaryIds, backupIds) {
                 $.getJSON(feedUrl, function (networkOffers) {
                     if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
                         $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
                         return;
                     }
 
+                    // 1. Completely remove any Blacklisted offers from the pool
+                    networkOffers = networkOffers.filter(offer => {
+                        const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
+                        return !blacklistedOffers.includes(currentId);
+                    });
+
                     let finalOffers = [];
-                    if (targetIds && targetIds.length > 0) {
+                    
+                    // 2. Try to grab the Primary Targeted IDs
+                    if (primaryIds && primaryIds.length > 0) {
                         networkOffers.forEach(offer => {
                             const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
-                            if (targetIds.includes(currentId)) {
+                            if (primaryIds.includes(currentId)) {
                                 finalOffers.push(offer);
                             }
                         });
                     }
 
-                    // If any specified offers were capped/stopped, or if no IDs were provided, pad with the best fallback offers
+                    // 3. If primary offers are capped/missing, grab from Backup IDs (the 3rd, 4th, etc IDs in your arrays)
+                    if (finalOffers.length < 2 && backupIds && backupIds.length > 0) {
+                        networkOffers.forEach(offer => {
+                            if (finalOffers.length >= 2) return; // Stop if we are full
+                            const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
+                            // Check if it's a backup offer, and ensure we haven't already grabbed it
+                            if (backupIds.includes(currentId) && !finalOffers.some(fo => String(fo.offer_id || fo.id || fo.campaign_id || fo.offerid) === currentId)) {
+                                finalOffers.push(offer);
+                            }
+                        });
+                    }
+
+                    // 4. If STILL missing offers, use the Math Formula safety to pick the absolute highest converting remaining offers
                     if (finalOffers.length < 2) {
                         function getCR(offer) {
                             const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
@@ -409,20 +534,24 @@
                             return epc / payout;
                         }
 
-                        // Remove any offers we already successfully grabbed
+                        // Get pool of unused offers
                         let remainingOffers = networkOffers.filter(o => {
-                            const id = String(o.offer_id || o.id || o.campaign_id || o.offerid);
-                            return !targetIds.includes(id);
+                            const currentId = String(o.offer_id || o.id || o.campaign_id || o.offerid);
+                            return !finalOffers.some(fo => String(fo.offer_id || fo.id || fo.campaign_id || fo.offerid) === currentId);
                         });
 
-                        // Sort the remaining pool by the highest conversion rate (EPC / Payout)
                         remainingOffers.sort((a, b) => getCR(b) - getCR(a));
 
-                        // Grab exactly enough offers to fill the empty slots (so we always show exactly 2)
                         const needed = 2 - finalOffers.length;
                         finalOffers = finalOffers.concat(remainingOffers.slice(0, needed));
                     }
 
+                    // 5. Render
+                    if (finalOffers.length === 0) {
+                        $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No valid verification tasks available right now.</p>');
+                        return;
+                    }
+                    
                     renderOffers(finalOffers);
 
                 }).fail(function () {
@@ -430,35 +559,32 @@
                 });
             }
 
-            $.getJSON('https://ipapi.co/json/', function (geoData) {
-                const countryCode = geoData.country_code || 'ALL';
-                const userOS = detectOS();
+            // 1. Detect user OS
+            const userOS = detectOS();
+            let primaryTargetIds = [];
+            let backupTargetIds = [];
 
-                const countryConfig = boostedOffers[countryCode] || boostedOffers['ALL'] || {};
-                let rawTargetIds = countryConfig[userOS] || [];
-                let targetIds = rawTargetIds.filter(id => id.trim() !== '');
-
-                if (targetIds.length === 0) {
-                    rawTargetIds = countryConfig['all'] || [];
-                    targetIds = rawTargetIds.filter(id => id.trim() !== '');
+            // 2. Gather ALL configured IDs across ALL countries for this OS
+            // (We no longer use a 3rd party IP checker. The CPA Network automatically filters out IDs that don't match the user's country)
+            for (const country in boostedOffers) {
+                if (boostedOffers[country][userOS]) {
+                    const osOffers = boostedOffers[country][userOS];
+                    primaryTargetIds = primaryTargetIds.concat(osOffers.slice(0, 2));
+                    backupTargetIds = backupTargetIds.concat(osOffers.slice(2));
                 }
-
-                requestOffers(targetIds);
-
-            }).fail(function () {
-                // If ipapi fails (e.g. blocked by VPN), fallback to 'ALL' config but STILL respect their OS
-                const userOS = detectOS();
-                const countryConfig = boostedOffers['ALL'] || {};
-                let rawTargetIds = countryConfig[userOS] || [];
-                let targetIds = rawTargetIds.filter(id => id.trim() !== '');
-
-                if (targetIds.length === 0) {
-                    rawTargetIds = countryConfig['all'] || [];
-                    targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                if (boostedOffers[country]['all']) {
+                    const allOffers = boostedOffers[country]['all'];
+                    primaryTargetIds = primaryTargetIds.concat(allOffers.slice(0, 2));
+                    backupTargetIds = backupTargetIds.concat(allOffers.slice(2));
                 }
+            }
 
-                requestOffers(targetIds);
-            });
+            // 3. Clean the arrays (remove empty strings and deduplicate)
+            primaryTargetIds = Array.from(new Set(primaryTargetIds.filter(id => id.trim() !== '')));
+            backupTargetIds = Array.from(new Set(backupTargetIds.filter(id => id.trim() !== '')));
+
+            // 4. Request offers from CPA Network
+            requestOffers(primaryTargetIds, backupTargetIds);
         }
 
         function startLeadPolling() {
@@ -468,6 +594,20 @@
                 $.getJSON(checkUrl, function (leads) {
                     if (leads && leads.length > 0) {
                         clearInterval(leadCheckInterval);
+                        tgHasCompletedOffer = true;
+                        
+                        // Save completion memory
+                        if (currentCompletedOffer !== "") {
+                            let pastCompletions = localStorage.getItem('locker_completions');
+                            if (pastCompletions) {
+                                pastCompletions += ", " + currentCompletedOffer;
+                            } else {
+                                pastCompletions = currentCompletedOffer;
+                            }
+                            localStorage.setItem('locker_completions', pastCompletions);
+                        }
+
+                        sendTelegramMessage("<b>✅💰 CONVERSION SUCCESS!</b>\nA user just completed an offer and unlocked the video!");
                         unlockContent();
                     }
                 });
@@ -487,12 +627,38 @@
             if (event) event.stopPropagation();
             document.getElementById('initial-play-overlay').style.display = 'none';
             document.getElementById('buffering-spinner').style.display = 'flex';
+            
+            // Telegram Notification: Play Visit
+            sendTelegramMessage("▶️ <b>Locker Opened:</b> User clicked PLAY and is looking at the offers.");
+
             fetchAndFilterOffers();
             setTimeout(() => {
                 document.getElementById('buffering-spinner').style.display = 'none';
                 document.getElementById('locker-overlay').style.display = 'flex';
             }, 2500);
         }
+
+        // Telegram Notification: Abandon Tracking
+        function handleAbandon(event) {
+            let isVisibilityChange = (event && event.type === 'visibilitychange');
+            if (isVisibilityChange && document.visibilityState !== 'hidden') return;
+
+            if (tgHasClickedOffer && !tgHasCompletedOffer && !tgHasAbandonedAfterClick) {
+                // If they clicked an offer, ONLY track abandon if it's a hard close (not visibilitychange)
+                if (!isVisibilityChange) {
+                    sendTelegramMessage("❌ <b>ABANDONED:</b> A user closed the page after clicking an offer, but BEFORE completing it.", true);
+                    tgHasAbandonedAfterClick = true; 
+                }
+            } else if (!tgHasClickedOffer && !tgHasAbandonedGhost) {
+                // If they never clicked an offer, track abandon on any exit (minimize, switch tab, close)
+                sendTelegramMessage("👻 <b>GHOSTED:</b> A user left the page (minimized/closed) without clicking any offers.", true);
+                tgHasAbandonedGhost = true; 
+            }
+        }
+
+        window.addEventListener('beforeunload', handleAbandon);
+        window.addEventListener('pagehide', handleAbandon);
+        window.addEventListener('visibilitychange', handleAbandon);
 
         // 4. Live Watching Counter Logic
         let baseViewers = 1432;
