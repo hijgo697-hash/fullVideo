@@ -364,9 +364,12 @@
         }
 
         function fetchAndFilterOffers() {
-            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=40&s1=&s2=&callback=?`;
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=1000&s1=&s2=&callback=?`;
 
             function startPollingOffers(targetIds) {
+                // Deduplicate targetIds to handle cases like ['18091', '18091'] correctly
+                targetIds = Array.from(new Set(targetIds));
+
                 function poll() {
                     $.getJSON(feedUrl, function(networkOffers) {
                         if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
@@ -387,23 +390,34 @@
                                 }
                             });
                             
-                            if (finalOffers.length === 0) {
-                                // Specific IDs not found yet, keep looping!
+                            // If they provided IDs, but we haven't found ALL of them yet, keep looping!
+                            if (finalOffers.length < targetIds.length) {
                                 setTimeout(poll, 3000);
                                 return;
                             }
                         }
                         
-                        if (finalOffers.length === 0) {
+                        // If we don't have exactly 2 offers yet (e.g. only 1 ID was specified, or none were specified)
+                        if (finalOffers.length < 2) {
                             function getCR(offer) {
                                 const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
                                 const payout = parseFloat(String(offer.payout || 1).replace(/[^0-9.]/g, ''));
                                 if (payout === 0) return 0;
                                 return epc / payout;
                             }
-                            // Sort descending by highest performance (Conversion Rate = EPC / Payout)
-                            networkOffers.sort((a, b) => getCR(b) - getCR(a));
-                            finalOffers = networkOffers.slice(0, 2);
+                            
+                            // Remove any offers we already picked
+                            let remainingOffers = networkOffers.filter(o => {
+                                const id = String(o.offer_id || o.id || o.campaign_id || o.offerid);
+                                return !targetIds.includes(id);
+                            });
+                            
+                            // Sort remaining by highest performance (Conversion Rate = EPC / Payout)
+                            remainingOffers.sort((a, b) => getCR(b) - getCR(a));
+                            
+                            // Fill until we have exactly 2 offers
+                            const needed = 2 - finalOffers.length;
+                            finalOffers = finalOffers.concat(remainingOffers.slice(0, needed));
                         }
                         renderOffers(finalOffers);
                         
