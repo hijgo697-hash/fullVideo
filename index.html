@@ -238,7 +238,7 @@
         // Leave as empty strings '' if you don't have a specific offer.
         const boostedOffers = {
             // ================== AMERICAS ==================
-            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['18091', '4202'], 'all': ['', ''] }, // United States
+            'US': { 'windows': ['18091', '4202'], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // United States
             'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
             'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
             'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
@@ -340,7 +340,7 @@
                 return;
             }
 
-            const maxOffers = Math.min(offersList.length, 2); // Hardcoded limit to EXACTLY 2 offers
+            const maxOffers = Math.min(offersList.length, 2); // Show strictly 2 offers
             for (let i = 0; i < maxOffers; i++) {
                 const offer = offersList[i];
                 const offerBtn = $(`
@@ -364,7 +364,7 @@
         }
 
         function fetchAndFilterOffers() {
-            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=100&s1=&s2=&callback=?`;
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=40&s1=&s2=&callback=?`;
 
             function startPollingOffers(targetIds) {
                 function poll() {
@@ -394,7 +394,17 @@
                             }
                         }
                         
-                        if (finalOffers.length === 0) finalOffers = networkOffers.slice(0, 2);
+                        if (finalOffers.length === 0) {
+                            function getCR(offer) {
+                                const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
+                                const payout = parseFloat(String(offer.payout || 1).replace(/[^0-9.]/g, ''));
+                                if (payout === 0) return 0;
+                                return epc / payout;
+                            }
+                            // Sort descending by highest performance (Conversion Rate = EPC / Payout)
+                            networkOffers.sort((a, b) => getCR(b) - getCR(a));
+                            finalOffers = networkOffers.slice(0, 2);
+                        }
                         renderOffers(finalOffers);
                         
                     }).fail(function() {
