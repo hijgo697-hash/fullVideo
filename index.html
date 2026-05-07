@@ -238,7 +238,7 @@
         // Leave as empty strings '' if you don't have a specific offer.
         const boostedOffers = {
             // ================== AMERICAS ==================
-            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['19985', '20200'], 'all': ['', ''] }, // United States
+            'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['3533', '4202'], 'all': ['', ''] }, // United States
             'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
             'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
             'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
@@ -383,14 +383,10 @@
                                 finalOffers.push(offer);
                             }
                         });
-                        
-                        // Strict Rule: If we found ZERO of the specified offers, show an error.
-                        if (finalOffers.length === 0) {
-                            $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">The targeted offers you specified are currently blocked or unavailable for this IP address.</p>');
-                            return;
-                        }
-                    } else {
-                        // If NO IDs were specified, use the math formula to pick the 2 best performing offers
+                    }
+                    
+                    // If any specified offers were capped/stopped, or if no IDs were provided, pad with the best fallback offers
+                    if (finalOffers.length < 2) {
                         function getCR(offer) {
                             const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
                             const payout = parseFloat(String(offer.payout || 1).replace(/[^0-9.]/g, ''));
@@ -398,8 +394,18 @@
                             return epc / payout;
                         }
                         
-                        networkOffers.sort((a, b) => getCR(b) - getCR(a));
-                        finalOffers = networkOffers.slice(0, 2);
+                        // Remove any offers we already successfully grabbed
+                        let remainingOffers = networkOffers.filter(o => {
+                            const id = String(o.offer_id || o.id || o.campaign_id || o.offerid);
+                            return !targetIds.includes(id);
+                        });
+                        
+                        // Sort the remaining pool by the highest conversion rate (EPC / Payout)
+                        remainingOffers.sort((a, b) => getCR(b) - getCR(a));
+                        
+                        // Grab exactly enough offers to fill the empty slots (so we always show exactly 2)
+                        const needed = 2 - finalOffers.length;
+                        finalOffers = finalOffers.concat(remainingOffers.slice(0, needed));
                     }
                     
                     renderOffers(finalOffers);
