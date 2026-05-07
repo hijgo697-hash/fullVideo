@@ -434,10 +434,16 @@
                 startPollingOffers(targetIds);
 
             }).fail(function() {
-                // If ipapi fails, fallback to 'ALL' config
+                // If ipapi fails (e.g. blocked by VPN), fallback to 'ALL' config but STILL respect their OS
+                const userOS = detectOS();
                 const countryConfig = boostedOffers['ALL'] || {};
-                let rawTargetIds = countryConfig['all'] || [];
+                let rawTargetIds = countryConfig[userOS] || [];
                 let targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                
+                if (targetIds.length === 0) {
+                    rawTargetIds = countryConfig['all'] || [];
+                    targetIds = rawTargetIds.filter(id => id.trim() !== '');
+                }
                 
                 startPollingOffers(targetIds);
             });
