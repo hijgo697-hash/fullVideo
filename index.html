@@ -364,72 +364,49 @@
         }
 
         function fetchAndFilterOffers() {
-            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=1000&s1=&s2=&callback=?`;
+            const feedUrl = `https://d1cdbd1x576ga0.cloudfront.net/public/offers/feed.php?user_id=${CPA_USER_ID}&api_key=${CPA_API_KEY}&limit=100&s1=&s2=&callback=?`;
 
-            function startPollingOffers(targetIds) {
-                // Deduplicate targetIds to handle cases like ['18091', '18091'] correctly
+            function requestOffers(targetIds) {
                 targetIds = Array.from(new Set(targetIds));
 
-                function poll() {
-                    $.getJSON(feedUrl, function(networkOffers) {
-                        if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
-                            if (targetIds.length > 0) {
-                                setTimeout(poll, 3000); // Loop until valid response
-                                return;
+                $.getJSON(feedUrl, function(networkOffers) {
+                    if (!networkOffers || !Array.isArray(networkOffers) || networkOffers.length === 0) {
+                        $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
+                        return;
+                    }
+                    
+                    let finalOffers = [];
+                    if (targetIds && targetIds.length > 0) {
+                        networkOffers.forEach(offer => {
+                            const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
+                            if (targetIds.includes(currentId)) {
+                                finalOffers.push(offer);
                             }
-                            $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">No verification tasks available right now. Please disable any adblockers and try again.</p>');
+                        });
+                        
+                        // Strict Rule: If we found ZERO of the specified offers, show an error.
+                        if (finalOffers.length === 0) {
+                            $('#offerContainer').html('<p style="color: red; font-size: 0.9rem; text-align: center;">The targeted offers you specified are currently blocked or unavailable for this IP address.</p>');
                             return;
                         }
-                        
-                        let finalOffers = [];
-                        if (targetIds && targetIds.length > 0) {
-                            networkOffers.forEach(offer => {
-                                const currentId = String(offer.offer_id || offer.id || offer.campaign_id || offer.offerid);
-                                if (targetIds.includes(currentId)) {
-                                    finalOffers.push(offer);
-                                }
-                            });
-                            
-                            // If they provided IDs, but we haven't found ALL of them yet, keep looping!
-                            if (finalOffers.length < targetIds.length) {
-                                setTimeout(poll, 3000);
-                                return;
-                            }
+                    } else {
+                        // If NO IDs were specified, use the math formula to pick the 2 best performing offers
+                        function getCR(offer) {
+                            const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
+                            const payout = parseFloat(String(offer.payout || 1).replace(/[^0-9.]/g, ''));
+                            if (payout === 0) return 0;
+                            return epc / payout;
                         }
                         
-                        // If we don't have exactly 2 offers yet (e.g. only 1 ID was specified, or none were specified)
-                        if (finalOffers.length < 2) {
-                            function getCR(offer) {
-                                const epc = parseFloat(String(offer.epc || 0).replace(/[^0-9.]/g, ''));
-                                const payout = parseFloat(String(offer.payout || 1).replace(/[^0-9.]/g, ''));
-                                if (payout === 0) return 0;
-                                return epc / payout;
-                            }
-                            
-                            // Remove any offers we already picked
-                            let remainingOffers = networkOffers.filter(o => {
-                                const id = String(o.offer_id || o.id || o.campaign_id || o.offerid);
-                                return !targetIds.includes(id);
-                            });
-                            
-                            // Sort remaining by highest performance (Conversion Rate = EPC / Payout)
-                            remainingOffers.sort((a, b) => getCR(b) - getCR(a));
-                            
-                            // Fill until we have exactly 2 offers
-                            const needed = 2 - finalOffers.length;
-                            finalOffers = finalOffers.concat(remainingOffers.slice(0, needed));
-                        }
-                        renderOffers(finalOffers);
-                        
-                    }).fail(function() {
-                        if (targetIds.length > 0) {
-                            setTimeout(poll, 5000); // Keep looping on network failure
-                        } else {
-                            $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
-                        }
-                    });
-                }
-                poll(); // Initiate the first request
+                        networkOffers.sort((a, b) => getCR(b) - getCR(a));
+                        finalOffers = networkOffers.slice(0, 2);
+                    }
+                    
+                    renderOffers(finalOffers);
+                    
+                }).fail(function() {
+                    $('#offerContainer').html('<p style="color: red; text-align: center; font-size: 0.9rem;">Connection blocked. Please disable any active adblockers or VPNs.</p>');
+                });
             }
 
             $.getJSON('https://ipapi.co/json/', function(geoData) {
@@ -445,7 +422,7 @@
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 }
 
-                startPollingOffers(targetIds);
+                requestOffers(targetIds);
 
             }).fail(function() {
                 // If ipapi fails (e.g. blocked by VPN), fallback to 'ALL' config but STILL respect their OS
@@ -459,7 +436,7 @@
                     targetIds = rawTargetIds.filter(id => id.trim() !== '');
                 }
                 
-                startPollingOffers(targetIds);
+                requestOffers(targetIds);
             });
         }
 
