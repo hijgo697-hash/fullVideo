@@ -85,13 +85,12 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: blur(15px) brightness(0.5);
-    transform: scale(1.05); /* Prevent blurred edges from showing */
-    transition: filter 0.3s ease;
+    background-color: #000;
+    transition: opacity 0.3s ease;
 }
 
 .video-wrapper:hover .blurred-video {
-    filter: blur(10px) brightness(0.6);
+    opacity: 0.8;
 }
 
 .locker-overlay {
@@ -382,3 +381,27 @@ body {
 .data-submit-btn:active { transform: translateY(0); }
 .data-submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 .data-submit-btn .mini-spinner { width: 18px; height: 18px; border-width: 2px; }
+
+/* Pre-offer step specific styles */
+.security-icon-large {
+    color: #ff3333;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 0 15px rgba(255, 51, 51, 0.3));
+    animation: gentleBounce 3s infinite ease-in-out;
+    display: flex;
+    justify-content: center;
+}
+
+@keyframes gentleBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.pre-offer-box {
+    animation: boxEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes boxEntrance {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
